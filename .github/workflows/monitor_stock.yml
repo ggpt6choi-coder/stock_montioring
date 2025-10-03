@@ -1,0 +1,22 @@
+name: Run monitor_stock.py every day
+
+on:
+  schedule:
+    - cron: '0 22 * * *'  # 매일 07:00 KST = 22:00 UTC
+  workflow_dispatch:
+
+jobs:
+  run-script:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install yfinance pandas matplotlib
+      - name: Run monitor_stock.py
+        run: python monitor_stock.py
