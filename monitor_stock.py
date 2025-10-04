@@ -12,8 +12,8 @@ from dotenv import load_dotenv
 import os
 
 # macOS 기본 한글 폰트 설정 (AppleGothic)
-# matplotlib.rc('font', family='AppleGothic')
-matplotlib.rc('font', family='NanumGothic')
+matplotlib.rc('font', family='AppleGothic')
+# matplotlib.rc('font', family='NanumGothic')
 
 # 평균 MDD, 최대 MDD 계산 예시 (calc_mdd.py 참고)
 def daily_mdd(series):
@@ -120,21 +120,45 @@ def fetch_stock_info(ticker):
         '연초대비': f"{ytd_change:.1f}%" if year_start_price else 'N/A', #7
     }
 
-def send_image_via_gmail(sender_email, app_password, receiver_email, subject, body, image_path):
+# def send_image_via_gmail(sender_email, app_password, receiver_email, subject, body, image_path):
+#     msg = MIMEMultipart()
+#     msg['From'] = sender_email
+#     msg['To'] = receiver_email
+#     msg['Subject'] = subject
+#     msg.attach(MIMEText(body, 'plain'))
+
+#     with open(image_path, 'rb') as f:
+#         mime = MIMEBase('image', 'png', filename=image_path)
+#         mime.add_header('Content-Disposition', 'attachment', filename=image_path)
+#         mime.add_header('X-Attachment-Id', '0')
+#         mime.add_header('Content-ID', '<0>')
+#         mime.set_payload(f.read())
+#         encoders.encode_base64(mime)
+#         msg.attach(mime)
+
+#     server = smtplib.SMTP('smtp.gmail.com', 587)
+#     server.starttls()
+#     server.login(sender_email, app_password)
+#     server.send_message(msg)
+#     server.quit()
+#     print('이미지 메일 전송 완료!')
+
+def send_images_via_gmail(sender_email, app_password, receiver_email, subject, body, image_paths):
     msg = MIMEMultipart()
     msg['From'] = sender_email
     msg['To'] = receiver_email
     msg['Subject'] = subject
     msg.attach(MIMEText(body, 'plain'))
 
-    with open(image_path, 'rb') as f:
-        mime = MIMEBase('image', 'png', filename=image_path)
-        mime.add_header('Content-Disposition', 'attachment', filename=image_path)
-        mime.add_header('X-Attachment-Id', '0')
-        mime.add_header('Content-ID', '<0>')
-        mime.set_payload(f.read())
-        encoders.encode_base64(mime)
-        msg.attach(mime)
+    for idx, image_path in enumerate(image_paths):
+        with open(image_path, 'rb') as f:
+            mime = MIMEBase('image', 'png', filename=os.path.basename(image_path))
+            mime.add_header('Content-Disposition', 'attachment', filename=os.path.basename(image_path))
+            mime.add_header('X-Attachment-Id', str(idx))
+            mime.add_header('Content-ID', f'<{idx}>')
+            mime.set_payload(f.read())
+            encoders.encode_base64(mime)
+            msg.attach(mime)
 
     server = smtplib.SMTP('smtp.gmail.com', 587)
     server.starttls()
@@ -268,22 +292,40 @@ if __name__ == "__main__":
                 cell.set_text_props(color='#222', ha=align)
 
     # pad_inches=0으로 저장하여 여백 완전 제거
-    plt.savefig('stock_table_instagram.png', bbox_inches='tight', pad_inches=0, dpi=100)
-    print('인스타그램용 이미지가 stock_table_instagram.png로 저장되었습니다.')
+    plt.savefig('stock_monitoring_instagram.png', bbox_inches='tight', pad_inches=0, dpi=100)
+    print('인스타그램용 이미지가 stock_monitoring_instagram.png로 저장되었습니다.')
 
     
+    import subprocess
+    subprocess.run(['python3', 'monitor_index.py'], cwd=os.path.dirname(os.path.abspath(__file__)))
+
     load_dotenv()
     SENDER_EMAIL = os.getenv('SENDER_EMAIL')
     APP_PASSWORD = os.getenv('APP_PASSWORD')
     RECEIVER_EMAIL = os.getenv('RECEIVER_EMAIL')
-    
-    send_image_via_gmail(
+
+    send_images_via_gmail(
         sender_email=SENDER_EMAIL,
         app_password=APP_PASSWORD,
         receiver_email=RECEIVER_EMAIL,
         subject='주식 테이블 이미지',
         body='첨부된 이미지를 확인하세요.',
-        image_path='stock_table_instagram.png'
+        image_paths=['stock_monitoring_instagram.png', 'index_monitoring_instagram.png']
     )
+
+
+    # load_dotenv()
+    # SENDER_EMAIL = os.getenv('SENDER_EMAIL')
+    # APP_PASSWORD = os.getenv('APP_PASSWORD')
+    # RECEIVER_EMAIL = os.getenv('RECEIVER_EMAIL')
+    
+    # send_image_via_gmail(
+    #     sender_email=SENDER_EMAIL,
+    #     app_password=APP_PASSWORD,
+    #     receiver_email=RECEIVER_EMAIL,
+    #     subject='주식 테이블 이미지',
+    #     body='첨부된 이미지를 확인하세요.',
+    #     image_path='stock_table_instagram.png'
+    # )
 else:
     print("데이터가 없습니다.")

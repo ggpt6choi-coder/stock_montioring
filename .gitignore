@@ -54,3 +54,4 @@ secrets.json
 venv
 
 *.png
+.DS_Store
