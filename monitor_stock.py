@@ -12,7 +12,8 @@ from dotenv import load_dotenv
 import os
 
 # macOS 기본 한글 폰트 설정 (AppleGothic)
-matplotlib.rc('font', family='AppleGothic')
+# matplotlib.rc('font', family='AppleGothic')
+matplotlib.rc('font', family='NanumGothic')
 
 # 평균 MDD, 최대 MDD 계산 예시 (calc_mdd.py 참고)
 def daily_mdd(series):
