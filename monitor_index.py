@@ -10,9 +10,18 @@ from email.mime.base import MIMEBase
 from email import encoders
 from dotenv import load_dotenv
 import os
+import platform
+
+#OS판별
+system_name = platform.system()
+
+if system_name == 'Darwin':  # macOS
+    matplotlib.rc('font', family='AppleGothic')
+elif system_name == 'Linux':  # GitHub Actions 등 Ubuntu 환경
+    matplotlib.rc('font', family='NanumGothic')
 
 # macOS 기본 한글 폰트 설정 (AppleGothic)
-matplotlib.rc('font', family='AppleGothic')
+# matplotlib.rc('font', family='AppleGothic')
 # matplotlib.rc('font', family='NanumGothic')
 
 # 평균 MDD, 최대 MDD 계산 예시 (calc_mdd.py 참고)
