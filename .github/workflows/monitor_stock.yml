@@ -2,7 +2,7 @@ name: Run monitor_stock.py every day
 
 on:
   schedule:
-    - cron: '50 6 * * *'  # 매일 06:50 KST
+    - cron: '50 21 * * *' # 한국시간 오전 6:50에 해당 (21:50 UTC 전날)
   workflow_dispatch:
 
 jobs:
