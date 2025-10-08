@@ -120,37 +120,14 @@ def fetch_stock_info(ticker):
     display_ticker = ticker_name_map.get(ticker, ticker)
     return {
         '티커': display_ticker, #0
-        '현재가': f"{price:.1f}", #1
-        '전일대비': f"{day_change:.2f}%", #2
+        '현재가': f"{price:,.1f}",
+        '전일대비': f"{day_change:.1f}%", #2
         'RSI(14)': f"{rsi_14:.1f}" if rsi_14 else 'N/A', #3
         '20일평균': f"{avg_20:.1f}", #4
         '현재MDD': f"{mdd:.1f}%", #5
         '평균MDD': f"{calc_avg_mdd(ticker):.1f}%", #6
         '연초대비': f"{ytd_change:.1f}%" if year_start_price else 'N/A', #7
     }
-
-# def send_image_via_gmail(sender_email, app_password, receiver_email, subject, body, image_path):
-#     msg = MIMEMultipart()
-#     msg['From'] = sender_email
-#     msg['To'] = receiver_email
-#     msg['Subject'] = subject
-#     msg.attach(MIMEText(body, 'plain'))
-
-#     with open(image_path, 'rb') as f:
-#         mime = MIMEBase('image', 'png', filename=image_path)
-#         mime.add_header('Content-Disposition', 'attachment', filename=image_path)
-#         mime.add_header('X-Attachment-Id', '0')
-#         mime.add_header('Content-ID', '<0>')
-#         mime.set_payload(f.read())
-#         encoders.encode_base64(mime)
-#         msg.attach(mime)
-
-#     server = smtplib.SMTP('smtp.gmail.com', 587)
-#     server.starttls()
-#     server.login(sender_email, app_password)
-#     server.send_message(msg)
-#     server.quit()
-#     print('이미지 메일 전송 완료!')
 
 def send_images_via_gmail(sender_email, app_password, receiver_email, subject, body, image_paths):
     msg = MIMEMultipart()
@@ -236,7 +213,7 @@ if __name__ == "__main__":
                 cell.set_facecolor('#FFF4E6')
             cell.set_fontsize(11)
 
-            align = 'right' if col in [2,5,6,7,8] else 'center'
+            align = 'right' if col in [1,2,3,4,5,6,7,8] else 'center'
             if col in [0,1]:
                 cell.set_text_props(weight='black')
             if col == 2:

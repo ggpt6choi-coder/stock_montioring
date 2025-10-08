@@ -131,7 +131,7 @@ def fetch_stock_info(ticker):
     display_ticker = ticker_name_map.get(ticker, ticker)
     return {
         '티커': display_ticker, #0
-        '현재가': f"{price:.1f}", #1
+        '현재가': f"{price:,.1f}", #1
         '20일평균': f"{avg_20:.1f}", #2
         '20일MDD': f"{mdd_20:.1f}%", #4
         '현재MDD': f"{mdd:.1f}%", #3
@@ -268,12 +268,19 @@ if __name__ == "__main__":
                     except:
                         pass
                 # 현재가 < 20일평균 파랑색
-                if colname == '현재가':
+                if colname == '20일평균':
                     try:
                         price = float(val)
-                        avg_20 = table[(row, colnames.index('20일평균'))].get_text().get_text().replace(',','')
-                        if float(price) < float(avg_20):
+                        nowPrice = table[(row, colnames.index('현재가'))].get_text().get_text().replace(',','')
+                        if float(price) > float(nowPrice):
                             cell.get_text().set_color('red')
+                    except:
+                        pass
+                if colname == '연초대비':
+                    try:
+                        price = float(val)
+                        color = '#1976d2' if price < 0 else '#d32f2f'
+                        cell.set_text_props(color=color)
                     except:
                         pass
                 if row == 2:
