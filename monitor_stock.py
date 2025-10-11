@@ -240,7 +240,7 @@ if __name__ == "__main__":
                     avg_20 = float(cell.get_text().get_text())
                     price = float(table[(row,1)].get_text().get_text())
                     if avg_20 > price:
-                        cell.set_text_props(color='#1976d2', weight='heavy', ha=align)
+                        cell.set_text_props(color='#d32f2f', weight='heavy', ha=align)
                     else:
                         cell.set_text_props(color='#222', ha=align)
                 except:
@@ -249,8 +249,8 @@ if __name__ == "__main__":
                 try:
                     text = cell.get_text().get_text()
                     val = float(text.replace('%', ''))
-                    color = '#1976d2' if val <= -30 else '#222'
-                    weight = 'black' if val <= -30 else 'normal'
+                    color = '#d32f2f' if val <= -30 else '#222'
+                    weight = 'heavy' if val <= -30 else 'normal'
                 except:
                     color = '#222'
                     weight = 'normal'
@@ -262,10 +262,11 @@ if __name__ == "__main__":
                     # col==5(현재MDD) 값 가져오기
                     text5 = table[(row,5)].get_text().get_text()
                     val5 = float(text5.replace('%', ''))
-                    color = '#1976d2' if val6 > val5 else '#222'
+                    color = '#d32f2f' if val6 > val5 else '#222'
+                    weight = 'heavy' if val6 > val5 else 'normal'
                 except:
                     color = '#222'
-                cell.set_text_props(color=color, ha='right')
+                cell.set_text_props(color=color, ha='right', weight=weight)
             elif col == 7:
                 try:
                     text = cell.get_text().get_text()
