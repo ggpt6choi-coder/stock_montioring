@@ -47,7 +47,7 @@ ticker_name_map = {
 }
 ticker_list = [
     '^DJI', '^GSPC', '^IXIC', '^KS11', 'CL=F',
-    'IEF', 'TLT', 'GLD',
+    'IEF', 'TLT', 'GLD','JNK', 'HYG',
     'MSFT', 'META', 'NVDA', 'AMZN', 'GOOGL', 'AAPL', 'TSLA',
     'AVGO', 'ORCL', 'SMR', 'OKLO', 'PLTR', 'BMNR', 'HOOD', 'SNPS', 'BRK-B', 'WMT', 'O',
 ]
@@ -209,6 +209,8 @@ if __name__ == "__main__":
                 cell.set_facecolor('#E6F4FA')
             elif 6 <= row <= 9:
                 cell.set_facecolor('#E9F9F0')
+            elif 10 <= row <= 11:
+                cell.set_facecolor('#E6F4FA')
             else:
                 cell.set_facecolor('#FFF4E6')
             cell.set_fontsize(11)
