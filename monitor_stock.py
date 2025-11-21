@@ -45,11 +45,29 @@ ticker_name_map = {
     '^KS11': '코스피',
     'CL=F': 'WTI',
 }
-ticker_list = [
-    '^DJI', '^GSPC', '^IXIC', '^KS11', 'CL=F',
-    'IEF', 'TLT', 'GLD','JNK', 'HYG',
-    'MSFT', 'META', 'NVDA', 'AMZN', 'GOOGL', 'AAPL', 'TSLA',
-    'AVGO', 'ORCL', 'SMR', 'OKLO', 'PLTR', 'BMNR', 'HOOD', 'SNPS', 'BRK-B', 'WMT', 'O',
+
+# 종목 그룹 정의 (카테고리별 색상 지정)
+ticker_groups = [
+    {
+        "name": "지수",
+        "tickers": ['^DJI', '^GSPC', '^IXIC', '^KS11', 'CL=F'],
+        "color": "#E6F4FA"
+    },
+    {
+        "name": "채권/금",
+        "tickers": ['IEF', 'TLT', 'GLD', 'JNK', 'HYG'],
+        "color": "#E9F9F0"
+    },
+    {
+        "name": "빅테크",
+        "tickers": ['MSFT', 'META', 'NVDA', 'AMZN', 'GOOGL', 'AAPL', 'TSLA'],
+        "color": "#E6F4FA"
+    },
+    {
+        "name": "기타",
+        "tickers": ['AVGO', 'ORCL', 'SMR', 'OKLO', 'PLTR', 'BMNR', 'HOOD', 'SNPS', 'BRK-B', 'WMT', 'O'],
+        "color": "#FFF4E6"
+    }
 ]
 
 # yfinance로 종목 정보 가져오기
@@ -97,6 +115,9 @@ def fetch_stock_info(ticker):
     # 20일평균
     avg_20 = hist['Close'][-20:].mean() if len(hist) >= 20 else hist['Close'].mean()
 
+    # 60일평균
+    avg_60 = hist['Close'][-60:].mean() if len(hist) >= 60 else hist['Close'].mean()
+
     # 연초 주가
     year_start_price = hist.loc[hist.index >= str(start_of_year), 'Close']
     if not year_start_price.empty:
@@ -124,9 +145,10 @@ def fetch_stock_info(ticker):
         '전일대비': f"{day_change:.1f}%", #2
         'RSI(14)': f"{rsi_14:.1f}" if rsi_14 else 'N/A', #3
         '20일평균': f"{avg_20:.1f}", #4
-        '현재MDD': f"{mdd:.1f}%", #5
-        '평균MDD': f"{calc_avg_mdd(ticker):.1f}%", #6
-        '연초대비': f"{ytd_change:.1f}%" if year_start_price else 'N/A', #7
+        '60일평균': f"{avg_60:.1f}", #5
+        '현재MDD': f"{mdd:.1f}%", #6
+        '평균MDD': f"{calc_avg_mdd(ticker):.1f}%", #7
+        '연초대비': f"{ytd_change:.1f}%" if year_start_price else 'N/A', #8
     }
 
 def send_images_via_gmail(sender_email, app_password, receiver_email, subject, body, image_paths):
@@ -155,13 +177,19 @@ def send_images_via_gmail(sender_email, app_password, receiver_email, subject, b
 
 if __name__ == "__main__":
     results = []
-    for ticker in ticker_list:
-        try:
-            info = fetch_stock_info(ticker)
-            if info:
-                results.append(info)
-        except Exception as e:
-            print(f"{ticker} 오류: {e}")
+    row_colors = [] # 각 행의 배경색을 저장할 리스트
+
+    for group in ticker_groups:
+        group_color = group['color']
+        for ticker in group['tickers']:
+            try:
+                info = fetch_stock_info(ticker)
+                if info:
+                    results.append(info)
+                    row_colors.append(group_color)
+            except Exception as e:
+                print(f"{ticker} 오류: {e}")
+                
     if results:
         df = pd.DataFrame(results)
         print(df.to_markdown(index=False))
@@ -204,21 +232,24 @@ if __name__ == "__main__":
         else:
             cell.set_edgecolor('#ddd')
             cell.set_height(0.09)
-            # 오른쪽 정렬 컬럼 인덱스: 2(전일대비), 5(20일MDD), 6(최고점MDD), 7(연초대비)
-            if 2 <= row <= 5:
-                cell.set_facecolor('#E6F4FA')
-            elif 6 <= row <= 9:
-                cell.set_facecolor('#E9F9F0')
-            elif 10 <= row <= 11:
-                cell.set_facecolor('#E6F4FA')
+            
+            # 데이터 행 (row >= 2)
+            # row_colors 리스트는 0부터 시작하므로, table row index 2는 row_colors[0]에 해당
+            data_row_idx = row - 2
+            if 0 <= data_row_idx < len(row_colors):
+                cell.set_facecolor(row_colors[data_row_idx])
             else:
-                cell.set_facecolor('#FFF4E6')
+                cell.set_facecolor('#ffffff') # 기본값
+
             cell.set_fontsize(11)
 
+            # 정렬 기준: 텍스트(티커)는 중앙, 숫자는 우측
+            # 컬럼 인덱스: 0(티커), 1(현재가), 2(전일대비), 3(RSI), 4(20일평균), 5(60일평균), 6(현재MDD), 7(평균MDD), 8(연초대비)
             align = 'right' if col in [1,2,3,4,5,6,7,8] else 'center'
+            
             if col in [0,1]:
                 cell.set_text_props(weight='black')
-            if col == 2:
+            if col == 2: # 전일대비
                 try:
                     text = cell.get_text().get_text()
                     val = float(text.replace('%', ''))
@@ -226,7 +257,7 @@ if __name__ == "__main__":
                 except:
                     color = '#222'
                 cell.set_text_props(color=color, ha=align)
-            elif col == 3:
+            elif col == 3: # RSI
                 try:
                     rsi = float(cell.get_text().get_text())
                     if rsi >= 70:
@@ -237,17 +268,27 @@ if __name__ == "__main__":
                         cell.set_text_props(color='#222', ha=align)
                 except:
                     cell.set_text_props(color='#222', ha=align)
-            elif col == 4:
+            elif col == 4: # 20일평균
                 try:
                     avg_20 = float(cell.get_text().get_text())
-                    price = float(table[(row,1)].get_text().get_text())
+                    price = float(table[(row,1)].get_text().get_text().replace(',',''))
                     if avg_20 > price:
                         cell.set_text_props(color='#d32f2f', weight='heavy', ha=align)
                     else:
                         cell.set_text_props(color='#222', ha=align)
                 except:
                     cell.set_text_props(color='#222', ha=align)
-            elif col == 5:
+            elif col == 5: # 60일평균
+                try:
+                    avg_60 = float(cell.get_text().get_text())
+                    price = float(table[(row,1)].get_text().get_text().replace(',',''))
+                    if avg_60 > price:
+                        cell.set_text_props(color='#d32f2f', weight='heavy', ha=align)
+                    else:
+                        cell.set_text_props(color='#222', ha=align)
+                except:
+                    cell.set_text_props(color='#222', ha=align)
+            elif col == 6: # 현재MDD
                 try:
                     text = cell.get_text().get_text()
                     val = float(text.replace('%', ''))
@@ -257,19 +298,20 @@ if __name__ == "__main__":
                     color = '#222'
                     weight = 'normal'
                 cell.set_text_props(color=color, weight=weight, ha=align)
-            elif col == 6:
+            elif col == 7: # 평균MDD
                 try:
                     text6 = cell.get_text().get_text()
                     val6 = float(text6.replace('%', ''))
-                    # col==5(현재MDD) 값 가져오기
-                    text5 = table[(row,5)].get_text().get_text()
+                    # col==6(현재MDD) 값 가져오기
+                    text5 = table[(row,6)].get_text().get_text()
                     val5 = float(text5.replace('%', ''))
                     color = '#d32f2f' if val6 > val5 else '#222'
                     weight = 'heavy' if val6 > val5 else 'normal'
                 except:
                     color = '#222'
+                    weight = 'normal'
                 cell.set_text_props(color=color, ha='right', weight=weight)
-            elif col == 7:
+            elif col == 8: # 연초대비
                 try:
                     text = cell.get_text().get_text()
                     val = float(text.replace('%', ''))
@@ -286,7 +328,8 @@ if __name__ == "__main__":
 
     
     import subprocess
-    subprocess.run(['python3', 'monitor_index.py'], cwd=os.path.dirname(os.path.abspath(__file__)))
+    import sys
+    subprocess.run([sys.executable, 'monitor_index.py'], cwd=os.path.dirname(os.path.abspath(__file__)))
 
     load_dotenv()
     SENDER_EMAIL = os.getenv('SENDER_EMAIL')
@@ -301,20 +344,3 @@ if __name__ == "__main__":
         body='첨부된 이미지를 확인하세요.',
         image_paths=['stock_monitoring_instagram.png', 'index_monitoring_instagram.png']
     )
-
-
-    # load_dotenv()
-    # SENDER_EMAIL = os.getenv('SENDER_EMAIL')
-    # APP_PASSWORD = os.getenv('APP_PASSWORD')
-    # RECEIVER_EMAIL = os.getenv('RECEIVER_EMAIL')
-    
-    # send_image_via_gmail(
-    #     sender_email=SENDER_EMAIL,
-    #     app_password=APP_PASSWORD,
-    #     receiver_email=RECEIVER_EMAIL,
-    #     subject='주식 테이블 이미지',
-    #     body='첨부된 이미지를 확인하세요.',
-    #     image_path='stock_table_instagram.png'
-    # )
-else:
-    print("데이터가 없습니다.")

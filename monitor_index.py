@@ -283,23 +283,32 @@ if __name__ == "__main__":
                         cell.set_text_props(color=color)
                     except:
                         pass
+                # 카테고리 헤더 색상 정의 (순서대로 매핑)
+                category_header_colors = {
+                    "S&P500": "#90caf9",
+                    "NASDAQ": "#81c784",
+                    "배당성장": "#ffe082",
+                    "중기채": "#ffb74d",
+                    "장기채": "#f48fb1",
+                    "금": "#b39ddb"
+                }
+
+                # 현재 행의 카테고리 확인 (첫 번째 열)
+                current_cat = table[(row, 0)].get_text().get_text()
+                
+                # 카테고리가 변경되는 지점(헤더)인지 확인
+                # 이전 행의 카테고리와 다르면 헤더로 간주 (row=2는 무조건 시작)
+                is_header = False
                 if row == 2:
-                    cell.set_facecolor("#90caf9")
-                    cell.set_text_props(weight='900')
-                if row == 7:
-                    cell.set_facecolor("#81c784")
-                    cell.set_text_props(weight='900')
-                if row == 12:
-                    cell.set_facecolor("#ffe082")
-                    cell.set_text_props(weight='900')
-                if row == 14:
-                    cell.set_facecolor("#ffb74d")
-                    cell.set_text_props(weight='900')
-                if row == 18:
-                    cell.set_facecolor("#f48fb1")
-                    cell.set_text_props(weight='900')
-                if row == 22:
-                    cell.set_facecolor("#b39ddb")
+                    is_header = True
+                elif row > 2:
+                    prev_row_cat = table[(row-1, 0)].get_text().get_text()
+                    if current_cat != prev_row_cat and current_cat != "":
+                        is_header = True
+                
+                if is_header:
+                    header_color = category_header_colors.get(current_cat, "#e0e0e0") # 기본값 회색
+                    cell.set_facecolor(header_color)
                     cell.set_text_props(weight='900')
 
         # 구분(카테고리) 값이 연속되는 행은 첫 행만 표시, 나머지는 빈 문자열로
