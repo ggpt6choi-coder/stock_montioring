@@ -109,14 +109,22 @@ def fetch_stock_info(ticker):
     # 20일평균
     avg_20 = hist['Close'][-20:].mean() if len(hist) >= 20 else hist['Close'].mean()
 
-    # 연초 주가
-    year_start_price = hist.loc[hist.index >= str(start_of_year), 'Close']
-    if not year_start_price.empty:
-        year_start_price = year_start_price.iloc[0]
+    # 연초 주가 (YTD 계산용)
+    # 1. 작년 마지막 거래일 종가 찾기
+    last_year_data = hist[hist.index.year < today.year]
+    
+    if not last_year_data.empty:
+        year_start_price = last_year_data['Close'].iloc[-1]
         ytd_change = ((price - year_start_price) / year_start_price) * 100
     else:
-        year_start_price = None
-        ytd_change = None
+        # 2. 작년 데이터가 없으면 올해 첫 데이터 사용
+        year_start_price_series = hist.loc[hist.index >= str(start_of_year), 'Close']
+        if not year_start_price_series.empty:
+            year_start_price = year_start_price_series.iloc[0]
+            ytd_change = ((price - year_start_price) / year_start_price) * 100
+        else:
+            year_start_price = None
+            ytd_change = None
 
     # 최고점, 최고점 날짜, MDD
     max_price = hist['Close'].max()
