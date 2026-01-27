@@ -65,7 +65,7 @@ ticker_groups = [
     },
     {
         "name": "기타",
-        "tickers": ['AVGO', 'ORCL', 'SMR', 'OKLO', 'PLTR', 'BMNR', 'HOOD', 'SNPS', 'BRK-B', 'WMT', 'O'],
+        "tickers": ['AVGO', 'TSM', 'SNPS', 'VST', 'SMR', 'OKLO', 'RKLB', 'PLTR', 'BMNR', 'HOOD', 'BRK-B', 'LLY', 'O'],
         "color": "#FFF4E6"
     }
 ]
