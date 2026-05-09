@@ -11,6 +11,7 @@ from email import encoders
 from dotenv import load_dotenv
 import os
 import platform
+from notifier import notify
 
 #OS판별
 system_name = platform.system()
@@ -146,28 +147,6 @@ def fetch_stock_info(ticker):
         '연초대비': f"{ytd_change:.1f}%" if year_start_price else 'N/A', #5
     }
 
-def send_image_via_gmail(sender_email, app_password, receiver_email, subject, body, image_path):
-    msg = MIMEMultipart()
-    msg['From'] = sender_email
-    msg['To'] = receiver_email
-    msg['Subject'] = subject
-    msg.attach(MIMEText(body, 'plain'))
-
-    with open(image_path, 'rb') as f:
-        mime = MIMEBase('image', 'png', filename=image_path)
-        mime.add_header('Content-Disposition', 'attachment', filename=image_path)
-        mime.add_header('X-Attachment-Id', '0')
-        mime.add_header('Content-ID', '<0>')
-        mime.set_payload(f.read())
-        encoders.encode_base64(mime)
-        msg.attach(mime)
-
-    server = smtplib.SMTP('smtp.gmail.com', 587)
-    server.starttls()
-    server.login(sender_email, app_password)
-    server.send_message(msg)
-    server.quit()
-    print('이미지 메일 전송 완료!')
 
 
 if __name__ == "__main__":
@@ -337,13 +316,10 @@ if __name__ == "__main__":
     APP_PASSWORD = os.getenv('APP_PASSWORD')
     RECEIVER_EMAIL = os.getenv('RECEIVER_EMAIL')
     
-    # send_image_via_gmail(
-    #     sender_email=SENDER_EMAIL,
-    #     app_password=APP_PASSWORD,
-    #     receiver_email=RECEIVER_EMAIL,
-    #     subject='주식 테이블 이미지',
-    #     body='첨부된 이미지를 확인하세요.',
-    #     image_path='index_monitoring_instagram.png'
-    # )
+    notify(
+        image_paths=['index_monitoring_instagram.png'],
+        subject='[지수/ETF] 주식 테이블 이미지',
+        body='첨부된 이미지를 확인하세요.'
+    )
 else:
     print("데이터가 없습니다.")

@@ -2,7 +2,7 @@ name: Run monitor_stock.py every day
 
 on:
   schedule:
-    - cron: '50 21 * * *' # 한국시간 오전 6:50에 해당 (21:50 UTC 전날)
+    - cron: '0 22 * * *' # 한국시간 오전 7:00에 해당 (22:00 UTC 전날)
   workflow_dispatch:
 
 jobs:
@@ -31,3 +31,5 @@ jobs:
           SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
           APP_PASSWORD: ${{ secrets.APP_PASSWORD }}
           RECEIVER_EMAIL: ${{ secrets.RECEIVER_EMAIL }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
