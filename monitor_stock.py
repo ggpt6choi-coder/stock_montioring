@@ -56,7 +56,7 @@ ticker_groups = [
     },
     {
         "name": "채권/금",
-        "tickers": ['IEF', 'TLT', 'GLD', 'JNK', 'HYG'],
+        "tickers": ['IEF', 'TLT', 'GLD'],
         "color": "#E9F9F0"
     },
     {
@@ -326,4 +326,13 @@ if __name__ == "__main__":
         image_paths=['stock_monitoring_instagram.png', 'index_monitoring_instagram.png'],
         subject='[종목/관심] 주식 테이블 이미지',
         body='첨부된 이미지를 확인하세요.'
+    )
+
+    # 시장 심리 지표 (Fear & Greed, VIX) 이미지 생성 및 전송
+    from monitor_sentiment import create_sentiment_image
+    sentiment_path = create_sentiment_image('sentiment_monitoring.png')
+    notify(
+        image_paths=[sentiment_path],
+        subject='[시장심리] Fear & Greed / VIX 지수',
+        body='시장 심리 지표 이미지를 확인하세요.'
     )
