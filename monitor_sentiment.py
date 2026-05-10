@@ -19,46 +19,33 @@ elif system_name == 'Linux':
     matplotlib.rc('font', family='NanumGothic')
 matplotlib.rcParams['axes.unicode_minus'] = False
 
-# ── 파스텔 팔레트 ──────────────────────────────────────────
-BG      = '#F8F9FA'
-CARD    = '#FFFFFF'
-DIVIDER = '#E0E0E0'
-TITLE   = '#000000'       # 제목: 완전 검정
-TEXT    = '#000000'
-SUBTEXT = '#666666'
+# ── 다크 모드 팔레트 ──────────────────────────────────────────
+BG      = '#161C22'
+CARD    = '#1F262E'
+DIVIDER = '#333333'
+TITLE   = '#FFFFFF'       # 제목: 흰색
+TEXT    = '#FFFFFF'
+SUBTEXT = '#AAAAAA'
 
-# Fear & Greed 파스텔 5구간
-FG_SEG  = ['#FFAAAA', '#FFCC99', '#FFE699', '#BBEEBB', '#99CC99']
+# Fear & Greed 파스텔 5구간 (다크 모드에 맞춰 살짝 채도 조정)
+FG_SEG  = ['#FF8888', '#FFB366', '#FFD700', '#88CC88', '#55AA55']
 FG_LBL  = ['극도공포\n(0-25)', '공포\n(26-45)', '중립\n(46-55)', '탐욕\n(56-75)', '극도탐욕\n(76-100)']
 FG_RNG  = [(0,25),(25,45),(45,55),(55,75),(75,100)]
 
 # VIX 파스텔 단계
-VIX_SEG = ['#99CC99','#BBEEBB','#FFCC99','#FFAAAA']
+VIX_SEG = ['#55AA55','#88CC88','#FFB366','#FF8888']
 
 RATING_KR = {'extreme fear':'극도의 공포','fear':'공포',
              'neutral':'중립','greed':'탐욕','extreme greed':'극도의 탐욕'}
 def to_kr(r): return RATING_KR.get(str(r).lower(), r)
 
-def fg_color(s):
-    if s<=25: return '#FF8888'
-    elif s<=45: return '#FFB366'
-    elif s<=55: return '#FFD700'
-    elif s<=75: return '#88CC88'
-    else: return '#55AA55'
-
-def vix_color(v):
-    if v<=15: return '#55AA55'
-    elif v<=25: return '#88CC88'
-    elif v<=35: return '#FFB366'
-    else: return '#FF8888'
-
 def score_text_color(s):
-    """점수에 따른 진한 텍스트 색상"""
-    if s<=25: return '#CC2222'
-    elif s<=45: return '#CC7700'
-    elif s<=55: return '#AA8800'
-    elif s<=75: return '#337733'
-    else: return '#226622'
+    """점수에 따른 밝은 텍스트 색상 (다크모드용)"""
+    if s<=25: return '#FF6B6B'
+    elif s<=45: return '#FFAD60'
+    elif s<=55: return '#FFEE93'
+    elif s<=75: return '#A2D5AB'
+    else: return '#7ED957'
 
 # ── 데이터 수집 ────────────────────────────────────────────
 CACHE_FILE = 'fg_cache.json'
@@ -142,10 +129,10 @@ def fetch_vix():
 def draw_gauge(ax, cx, cy, score, prev_score, rating, prev_rating):
     outer_r, inner_r = 34, 21
 
-    # 트랙 배경 (연한 회색)
+    # 트랙 배경 (어두운 회색)
     ax.add_patch(Wedge((cx,cy), outer_r+0.5, 0, 180,
                        width=inner_r+1.5,
-                       facecolor='#EEEEEE', edgecolor='none', zorder=2))
+                       facecolor='#2A323D', edgecolor='none', zorder=2))
 
     # 5구간 세그먼트
     for (lo,hi), color, lbl in zip(FG_RNG, FG_SEG, FG_LBL):
@@ -168,10 +155,10 @@ def draw_gauge(ax, cx, cy, score, prev_score, rating, prev_rating):
     nx = cx+28*np.cos(angle_rad)
     ny = cy+28*np.sin(angle_rad)
     ax.annotate('', xy=(nx,ny), xytext=(cx,cy),
-                arrowprops=dict(arrowstyle='->', color='#222222',
+                arrowprops=dict(arrowstyle='->', color='#FFFFFF',
                                 lw=5.0, mutation_scale=22), zorder=7)
-    ax.add_patch(Circle((cx,cy), 3.2, facecolor='#222222', zorder=8))
-    ax.add_patch(Circle((cx,cy), 1.6, facecolor='white', zorder=9))
+    ax.add_patch(Circle((cx,cy), 3.2, facecolor='#FFFFFF', zorder=8))
+    ax.add_patch(Circle((cx,cy), 1.6, facecolor=BG, zorder=9))
 
     # 점수
     sc = score_text_color(score)
@@ -195,13 +182,10 @@ def draw_vix_content(ax, cx, cy, vix):
     cur = vix['current']
     chg = vix['change']
     pct = vix['pct']
-    vc  = score_text_color(100 - min(cur/80*100, 100))  # VIX는 높을수록 위험
-    vc  = vix_color(cur)
-    # VIX 텍스트 색은 진하게
-    vc_text = '#CC2222' if cur>35 else ('#CC7700' if cur>25 else ('#AA8800' if cur>15 else '#226622'))
+    vc_text = score_text_color(100 - min(cur/80*100, 100))
 
     arrow = '▲' if chg >= 0 else '▼'
-    cc    = '#CC4444' if chg >= 0 else '#3377CC'
+    cc    = '#FF6B6B' if chg >= 0 else '#66AAFF'
 
     # 수치
     ax.text(cx, cy+11, f'{cur:.2f}',
@@ -235,11 +219,11 @@ def draw_vix_content(ax, cx, cy, vix):
     clamped = min(cur, 80)
     mx = bx+(clamped/total)*bw
     ax.annotate('', xy=(mx, by+bh+0.4), xytext=(mx, by+bh+4.5),
-                arrowprops=dict(arrowstyle='->', color='#333333',
+                arrowprops=dict(arrowstyle='->', color='#FFFFFF',
                                 lw=2.2, mutation_scale=12), zorder=6)
     ax.text(mx, by+bh+5, f'{cur:.1f}',
             ha='center', va='bottom', fontsize=14,
-            fontweight='black', color='#000000', zorder=6)
+            fontweight='black', color='#FFFFFF', zorder=6)
 
 # ── 메인 ──────────────────────────────────────────────────
 def create_sentiment_image(output_path='sentiment_monitoring.png'):
