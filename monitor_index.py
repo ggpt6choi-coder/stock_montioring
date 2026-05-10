@@ -311,15 +311,6 @@ if __name__ == "__main__":
         print('인스타그램용 이미지가 index_monitoring_instagram.png로 저장되었습니다.')
 
     
-    load_dotenv()
-    SENDER_EMAIL = os.getenv('SENDER_EMAIL')
-    APP_PASSWORD = os.getenv('APP_PASSWORD')
-    RECEIVER_EMAIL = os.getenv('RECEIVER_EMAIL')
-    
-    notify(
-        image_paths=['index_monitoring_instagram.png'],
-        subject='[지수/ETF] 주식 테이블 이미지',
-        body='첨부된 이미지를 확인하세요.'
-    )
+    # 알림은 monitor_stock.py에서 통합하여 전송하므로 여기서는 이미지 저장만 수행합니다.
 else:
     print("데이터가 없습니다.")

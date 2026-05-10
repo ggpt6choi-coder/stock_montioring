@@ -322,17 +322,17 @@ if __name__ == "__main__":
     APP_PASSWORD = os.getenv('APP_PASSWORD')
     RECEIVER_EMAIL = os.getenv('RECEIVER_EMAIL')
 
-    notify(
-        image_paths=['stock_monitoring_instagram.png', 'index_monitoring_instagram.png'],
-        subject='[종목/관심] 주식 테이블 이미지',
-        body='첨부된 이미지를 확인하세요.'
-    )
-
-    # 시장 심리 지표 (Fear & Greed, VIX) 이미지 생성 및 전송
+    # 시장 심리 지표 (Fear & Greed, VIX) 이미지 생성
     from monitor_sentiment import create_sentiment_image
     sentiment_path = create_sentiment_image('sentiment_monitoring.png')
+
+    # 모든 이미지를 모아서 한 번에 전송
     notify(
-        image_paths=[sentiment_path],
-        subject='[시장심리] Fear & Greed / VIX 지수',
-        body='시장 심리 지표 이미지를 확인하세요.'
+        image_paths=[
+            'stock_monitoring_instagram.png', 
+            'index_monitoring_instagram.png', 
+            'sentiment_monitoring.png'
+        ],
+        subject='[Daily Report] 주식 시장 모니터링',
+        body='오늘의 종목, 지수 및 시장 심리 지표 리포트입니다.'
     )
