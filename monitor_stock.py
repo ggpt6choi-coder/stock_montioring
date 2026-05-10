@@ -324,15 +324,27 @@ if __name__ == "__main__":
 
     # 시장 심리 지표 (Fear & Greed, VIX) 이미지 생성
     from monitor_sentiment import create_sentiment_image
-    sentiment_path = create_sentiment_image('sentiment_monitoring.png')
+    create_sentiment_image('sentiment_monitoring.png')
+
+    # 시장 맵 (Finviz) 이미지 생성
+    try:
+        from monitor_map import capture_market_map
+        capture_market_map('market_map.png')
+    except Exception as e:
+        print(f"시장 맵 생성 실패: {e}")
 
     # 모든 이미지를 모아서 한 번에 전송
+    image_list = [
+        'stock_monitoring_instagram.png', 
+        'index_monitoring_instagram.png', 
+        'sentiment_monitoring.png'
+    ]
+    # 시장 맵이 성공적으로 생성되었을 때만 추가
+    if os.path.exists('market_map.png'):
+        image_list.append('market_map.png')
+
     notify(
-        image_paths=[
-            'stock_monitoring_instagram.png', 
-            'index_monitoring_instagram.png', 
-            'sentiment_monitoring.png'
-        ],
+        image_paths=image_list,
         subject='[Daily Report] 주식 시장 모니터링',
-        body='오늘의 종목, 지수 및 시장 심리 지표 리포트입니다.'
+        body='오늘의 종목, 지수 및 시장 심리/지도 리포트입니다.'
     )
