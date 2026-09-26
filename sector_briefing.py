@@ -55,6 +55,21 @@ SECTOR_ETFS: dict[str, str] = {
     "XLB":  "소재",
 }
 
+# 모바일 슬림 테이블용 2글자 약어
+SECTOR_SHORT: dict[str, str] = {
+    "XLK":  "기술",
+    "XLC":  "통신",
+    "XLY":  "소비",
+    "XLP":  "필수",
+    "XLV":  "헬스",
+    "XLF":  "금융",
+    "XLI":  "산업",
+    "XLE":  "에너",
+    "XLU":  "유틸",
+    "XLRE": "부동",
+    "XLB":  "소재",
+}
+
 # SMA 기간
 MA_PERIODS = [20, 50, 200]
 
@@ -232,10 +247,12 @@ def get_ai_comment(stats: list, ref_date: date) -> Optional[str]:
                         {
                             "role": "system",
                             "content": (
-                                "You are a Korean stock market analyst. "
-                                "You MUST respond ONLY in Korean (한국어). "
-                                "Never use English, Chinese, or any other language. "
-                                "모든 답변은 반드시 한국어로만 작성하세요."
+                                "You are a professional Korean stock market analyst. "
+                                "STRICT RULES:\n"
+                                "1. Output ONLY 3-4 bullet points in Korean starting with '• '.\n"
+                                "2. NEVER output your thinking process, explanation, or English text.\n"
+                                "3. Do not include markdown headers (#) or introductions.\n"
+                                "4. Output strictly starts with '• '."
                             ),
                         },
                         {"role": "user", "content": prompt},
@@ -305,23 +322,76 @@ def _vpad(s: str, width: int, align: str = '<') -> str:
 
 
 # ─────────────────────────────────────────────
-# 메시지 포맷팅
+# 메시지 포맷팅 (모바일 초슬림 규격: 30자 이내)
 # ─────────────────────────────────────────────
 
-def fmt_gap(gap: float) -> str:
-    """이격률 고정스 7칸: 이모지(2칸) + 부호+숫자(5칸).
+def fmt_slim_gap(gap: float, width: int = 4) -> str:
+    """모바일용 슬림 수치 포맷팅: +4.3 or -1.9 or +20%"""
+    if abs(gap) >= 9.95:
+        # 두 자리 수 이상이면 정수%로 표기하여 자릿수 절약
+        s = f"{gap:+3.0f}%"
+    else:
+        s = f"{gap:+4.1f}"
+    return _vpad(s, width, ">")
 
-    예시)
-      gap= 4.3 → "🟢 +4.3"  (emoji=2, " +4.3"=5)
-      gap=20.2 → "🟢+20.2"  (emoji=2, "+20.2"=5)
-      gap=-4.8 → "🔴 -4.8"  (emoji=2, " -4.8"=5)
+
+def clean_ai_comment(raw_text: Optional[str], stats: list) -> str:
     """
-    icon = "🟢" if gap >= 0 else "🔴"
-    return f"{icon}{gap:+5.1f}"
+    AI 응답에서 생각 과정(Thinking), 영어 문장을 완전히 제거하고
+    깨끗한 한국어 불릿 포인트만 추출합니다. 실패 시 룰베이스 퀀트 요약으로 대체.
+    """
+    import re
+    import html as _html
+
+    if raw_text:
+        # 1. <think> 태그 제거
+        text = re.sub(r'<think>.*?</think>', '', raw_text, flags=re.DOTALL)
+        
+        valid_bullets = []
+        for line in text.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            # 영어 생각/메타 문장 제거
+            lower = line.lower()
+            if any(p in lower for p in [
+                'the user wants', 'let me analyze', 'here is', 'here are',
+                'based on the data', 'in korean', 'strict format', 'bullet point'
+            ]):
+                continue
+            
+            # 불릿 기호 정규화
+            clean_line = re.sub(r'^[\-\*•\d\.\s]+', '• ', line)
+            
+            # 한글이 최소 3글자 이상 포함되어 있는지 확인
+            korean_chars = re.findall(r'[가-힣]', clean_line)
+            if len(korean_chars) >= 3 and clean_line.startswith('• '):
+                valid_bullets.append(_html.escape(clean_line))
+
+        if len(valid_bullets) >= 2:
+            return "\n".join(valid_bullets[:4])
+
+    # ── Fallback: 룰베이스 퀀트 자동 요약 ──
+    above_200 = sum(1 for s in stats if s["gap200"] >= 0)
+    sorted_by_gap20 = sorted(stats, key=lambda x: x["gap20"], reverse=True)
+    bullish = [s['ticker'] for s in stats if s['alignment'] == '정배열']
+    bearish = [s['ticker'] for s in stats if s['alignment'] == '역배열']
+
+    bullets = [
+        f"• 200일선 상회 {above_200}/11개 — {'대세 상승 국면 유지' if above_200 >= 8 else '단기 하락 및 조정 압력 우세'}",
+        f"• 단기 주도 섹터: {sorted_by_gap20[0]['ticker']}({sorted_by_gap20[0]['sector']}) {sorted_by_gap20[0]['gap20']:+.1f}% 강세",
+        f"• 단기 조정 섹터: {sorted_by_gap20[-1]['ticker']}({sorted_by_gap20[-1]['sector']}) {sorted_by_gap20[-1]['gap20']:+.1f}% 약세",
+    ]
+    if bullish:
+        bullets.append(f"• 정배열 추세 섹터: {', '.join(bullish)}")
+    elif bearish:
+        bullets.append(f"• 역배열 경계 섹터: {', '.join(bearish)}")
+
+    return "\n".join(bullets)
 
 
 def build_message(stats: list, ref_date: date, ai_comment: Optional[str] = None) -> str:
-    """텔레그램 HTML 메시지 생성 (모바일 고정폭 폰트)."""
+    """텔레그램 HTML 메시지 생성 (모바일 한 줄 30자 슬림 규격)."""
     date_str = ref_date.strftime("%Y-%m-%d")
 
     # ── 헤더 ──────────────────────────────────
@@ -330,37 +400,40 @@ def build_message(stats: list, ref_date: date, ai_comment: Optional[str] = None)
         f"(기준: {date_str} 장마감)\n\n"
     )
 
-    # ── 테이블 (pre 태그로 고정폭) ────────────
-    # 시각 컬럼 폭 (visual columns)
-    W_TK  = 4   # 티커: XLRE = 4
-    W_SC  = 10  # 섹터: 임의소비재 = 10
-    W_GAP = 7   # 이격률: 이모지(2) + 부호+숫자(5) = 7
-    W_AL  = 6   # 배열: 역배열 = 6
-
-    # 헤더행
+    # ── 모바일 슬림 테이블 (총 30칸으로 모바일 줄바꿈 100% 방지) ────
+    # 컬럼 구성: 티커(4) 섹터(4) 20(4) 50(4) 200(5) 상태(4) + 공백 5 = 30칸
     hdr = (
-        _vpad("티커", W_TK) + " "
-        + _vpad("섹터", W_SC) + " "
-        + _vpad("20일", W_GAP, '^') + " "
-        + _vpad("50일", W_GAP, '^') + " "
-        + _vpad("200일", W_GAP, '^') + " "
-        + _vpad("배열", W_AL)
+        f"{_vpad('티커', 4)} "
+        f"{_vpad('섹터', 4)} "
+        f"{_vpad('20', 4, '>')} "
+        f"{_vpad('50', 4, '>')} "
+        f"{_vpad('200', 5, '>')} "
+        f"상태"
     )
-    # 구분선: 각 컬럼 시각 폭 + 구분 공백(1) 합산
-    divider = "-" * (W_TK + 1 + W_SC + 1 + W_GAP + 1 + W_GAP + 1 + W_GAP + 1 + W_AL)
+    divider = "-" * 30  # 시각폭 30칸과 정확히 일치
 
     rows = [hdr, divider]
     for s in stats:
-        g20  = fmt_gap(s["gap20"])
-        g50  = fmt_gap(s["gap50"])
-        g200 = fmt_gap(s["gap200"])
+        tk_short = SECTOR_SHORT.get(s["ticker"], s["sector"][:2])
+        g20  = fmt_slim_gap(s["gap20"], 4)
+        g50  = fmt_slim_gap(s["gap50"], 4)
+        g200 = fmt_slim_gap(s["gap200"], 5)
+
+        # 상태 이모지 및 약어 (🟢정, 🟡혼, 🔴역)
+        if s["alignment"] == "정배열":
+            status = "🟢정"
+        elif s["alignment"] == "역배열":
+            status = "🔴역"
+        else:
+            status = "🟡혼"
+
         row = (
-            _vpad(s["ticker"], W_TK) + " "
-            + _vpad(s["sector"], W_SC) + " "
-            + g20 + " "
-            + g50 + " "
-            + g200 + " "
-            + s["alignment"]
+            f"{_vpad(s['ticker'], 4)} "
+            f"{_vpad(tk_short, 4)} "
+            f"{g20} "
+            f"{g50} "
+            f"{g200} "
+            f"{status}"
         )
         rows.append(row)
 
@@ -374,7 +447,6 @@ def build_message(stats: list, ref_date: date, ai_comment: Optional[str] = None)
     top2    = ", ".join(f"{s['ticker']}({s['sector']})" for s in sorted_by_gap20[:2])
     bottom2 = ", ".join(f"{s['ticker']}({s['sector']})" for s in sorted_by_gap20[-2:])
 
-    # 200일선 판정 멘트
     if above_200 >= 8:
         trend_comment = "대세 상승 추세 유지"
     elif above_200 >= 5:
@@ -389,28 +461,16 @@ def build_message(stats: list, ref_date: date, ai_comment: Optional[str] = None)
         f"• 단기 조정 섹터(20일선 하위): <b>{bottom2}</b>"
     )
 
-    # ── AI 시황 코멘트 ────────────────────────
-    ai_block = ""
-    if ai_comment:
-        import html as _html
-        # AI 응답에서 '•' 시작 라인만 필터링 후 HTML 특수문자 이스케이프
-        bullet_lines = [
-            _html.escape(line.strip())
-            for line in ai_comment.splitlines()
-            if line.strip().startswith("•")
-        ]
-        # 불릿이 없으면 원문 전체를 이스케이프 후 사용 (폴백 모델 대비)
-        if bullet_lines:
-            formatted = "\n".join(bullet_lines)
-        else:
-            formatted = _html.escape(ai_comment.strip())
-        ai_block = (
-            f"\n\n🤖 <b>AI 시황 코멘트</b>\n"
-            f"{formatted}"
-        )
+    # ── AI 시황 코멘트 (클린 필터링 적용) ──────
+    cleaned_comment = clean_ai_comment(ai_comment, stats)
+    ai_block = (
+        f"\n\n🤖 <b>AI 시황 코멘트</b>\n"
+        f"{cleaned_comment}"
+    )
 
+    legend = "\n\n<pre>* 상태: 🟢정(정배열) 🟡혼(혼조) 🔴역(역배열)</pre>"
 
-    return header + table + summary + ai_block
+    return header + table + summary + ai_block + legend
 
 
 # ─────────────────────────────────────────────
