@@ -25,27 +25,29 @@ elif system_name == 'Linux':  # GitHub Actions 등 Ubuntu 환경
 # matplotlib.rc('font', family='AppleGothic')
 # matplotlib.rc('font', family='NanumGothic')
 
-# 평균 MDD, 최대 MDD 계산 예시 (calc_mdd.py 참고)
-def daily_mdd(series):
-    max_so_far = series.expanding().max()
-    mdd = ((series - max_so_far) / max_so_far) * 100
-    return mdd
+import numpy as np
 
-def calc_avg_mdd(ticker):
-    stock = yf.Ticker(ticker)
-    hist = stock.history(period="max")
-    mdd_daily = daily_mdd(hist['Close'])
-    avg_mdd = mdd_daily.mean()
-    return avg_mdd
+# 대표 상품에 대한 정석 퀀트 공식 기반 상장 이후 연도별 평균 MDD 계산 (cummax 활용)
+def calc_historical_avg_mdd(series: pd.Series) -> float:
+    s = series.dropna()
+    if len(s) < 50:
+        return None
+    df = s.to_frame('Close')
+    df['Year'] = df.index.year
+    mdds = []
+    for year, group in df.groupby('Year'):
+        p = group['Close']
+        if len(p) < 5:
+            continue
+        rolling_max = p.cummax()
+        drawdown = (p - rolling_max) / rolling_max * 100
+        mdds.append(drawdown.min())
+    return float(np.mean(mdds)) if mdds else None
 
-# 여러 종목 코드 리스트 (지수/ETF/원자재/주식)
-
-# 카테고리별 종목 리스트 및 한글명 매핑
-
-# (검색용 티커, 표에 표시할 이름) 쌍으로 구성
+# 카테고리별 종목 리스트 및 한글명 매핑 (상단이 각 카테고리의 대표 상품)
 category_map = [
     ("S&P500", [
-        ("SPLG", "SPLG"), ("SPY", "SPY"), ("SSO", "SSO"), ("UPRO", "UPRO"), ("453330.KS", "RISE S&P500")
+        ("SPY", "SPY"), ("SSO", "SSO"), ("UPRO", "UPRO"), ("453330.KS", "RISE S&P500")
     ]),
     ("NASDAQ", [
         ("QQQM", "QQQM"), ("QQQ", "QQQ"), ("QLD", "QLD"), ("TQQQ", "TQQQ"), ("368590.KS", "RISE 미국나스닥100")
@@ -64,9 +66,11 @@ category_map = [
     ]),
 ]
 
+# 상단 대표 상품 리스트 (정석 연도별 평균 MDD 산출 대상)
+representative_tickers = ['SPY', 'QQQM', 'QQQ', 'SCHD', 'IEF', 'TLT', 'GLDM']
+
 # 표에 표시할 이름을 매핑 (검색용 티커 → 표에 표시할 이름)
 ticker_name_map = {
-    "SPLG": "SPLG",
     "SPY": "SPY",
     "SSO": "SSO",
     "UPRO": "UPRO",
@@ -91,12 +95,8 @@ ticker_name_map = {
 }
 
 # yfinance로 종목 정보 가져오기
-def fetch_stock_info(ticker):
+def fetch_stock_info(ticker, avg_mdd=None):
     stock = yf.Ticker(ticker)
-    info = stock.info
-    name = ticker_name_map.get(ticker, info.get('shortName', ticker))
-    time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
     today = datetime.now().date()
     start_of_year = datetime(today.year, 1, 1).date()
     hist = stock.history(period="1y")
@@ -105,20 +105,16 @@ def fetch_stock_info(ticker):
         return
 
     price = hist['Close'].iloc[-1]
-    price_date = hist.index[-1].strftime('%Y-%m-%d')
 
     # 20일평균
     avg_20 = hist['Close'][-20:].mean() if len(hist) >= 20 else hist['Close'].mean()
 
     # 연초 주가 (YTD 계산용)
-    # 1. 작년 마지막 거래일 종가 찾기
     last_year_data = hist[hist.index.year < today.year]
-    
     if not last_year_data.empty:
         year_start_price = last_year_data['Close'].iloc[-1]
         ytd_change = ((price - year_start_price) / year_start_price) * 100
     else:
-        # 2. 작년 데이터가 없으면 올해 첫 데이터 사용
         year_start_price_series = hist.loc[hist.index >= str(start_of_year), 'Close']
         if not year_start_price_series.empty:
             year_start_price = year_start_price_series.iloc[0]
@@ -127,10 +123,8 @@ def fetch_stock_info(ticker):
             year_start_price = None
             ytd_change = None
 
-    # 최고점, 최고점 날짜, MDD
+    # 최고점 대비 현재 MDD
     max_price = hist['Close'].max()
-    max_price_idx = hist['Close'].idxmax()
-    max_price_date = max_price_idx.strftime('%Y-%m-%d')
     mdd = ((price - max_price) / max_price) * 100
 
     # 20일 MDD 계산
@@ -139,36 +133,46 @@ def fetch_stock_info(ticker):
 
     display_ticker = ticker_name_map.get(ticker, ticker)
     return {
-        '티커': display_ticker, #0
-        '현재가': f"{price:,.1f}", #1
-        '20일평균': f"{avg_20:.1f}", #2
-        '20일MDD': f"{mdd_20:.1f}%", #4
-        '현재MDD': f"{mdd:.1f}%", #3
-        '연초대비': f"{ytd_change:.1f}%" if year_start_price else 'N/A', #5
+        '티커': display_ticker,
+        '현재가': f"{price:,.1f}",
+        '20일평균': f"{avg_20:.1f}",
+        '20일MDD': f"{mdd_20:.1f}%",
+        '현재MDD': f"{mdd:.1f}%",
+        '평균MDD': f"{avg_mdd:.1f}%" if avg_mdd is not None else '-',
+        '연초대비': f"{ytd_change:.1f}%" if year_start_price else 'N/A',
     }
 
 
-
 if __name__ == "__main__":
+    now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+    print("1. 대표 상품 역사적 연도별 평균 MDD 일괄 수집 중...")
+    avg_mdd_map = {}
+    try:
+        raw_rep = yf.download(representative_tickers, period="max", auto_adjust=True, progress=False)
+        rep_closes = raw_rep['Close']
+        for rtk in representative_tickers:
+            if rtk in rep_closes.columns:
+                mdd_val = calc_historical_avg_mdd(rep_closes[rtk])
+                if mdd_val is not None:
+                    avg_mdd_map[rtk] = mdd_val
+    except Exception as e:
+        print(f"대표 상품 평균 MDD 수집 오류 (계속 진행): {e}")
+
     results = []
     table_data = []
     colnames = None
-    now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     # 카테고리별로 표 데이터 생성
-    # 표의 첫 번째 열에 카테고리(구분값) 추가
     for cat, ticker_pairs in category_map:
         for ticker, display_name in ticker_pairs:
             try:
-                info = fetch_stock_info(ticker)
+                rep_avg_mdd = avg_mdd_map.get(ticker, None)
+                info = fetch_stock_info(ticker, avg_mdd=rep_avg_mdd)
                 if info:
-                    # 상품명(표시명) 칼럼을 항상 두 번째로 추가
                     row = [cat, display_name]
-                    # info에서 '티커' 항목을 제외한 나머지 값만 추가
                     row += [v for k, v in info.items() if k != "티커"]
                     if colnames is None:
-                        # 칼럼명: 구분, 상품명, 나머지 info.keys() (티커 제외)
                         keys = [k for k in info.keys() if k != "티커"]
-                        # '평균MDD' 대신 '20일MDD'가 포함됨
                         colnames = ["구분", "상품명"] + keys
                     table_data.append(row)
             except Exception as e:
@@ -185,16 +189,14 @@ if __name__ == "__main__":
 
         nrows, ncols = len(table_data), len(colnames)
         table_bbox = [0.01, 0.01, 0.99, 0.99]
-        # 컬럼 너비를 비율로 정확하게 분배하여 텍스트 침범 방지 (합 1.0)
-        col_widths = [0.12, 0.26, 0.13, 0.13, 0.12, 0.12, 0.12]
+        # 8개 컬럼 너비 분배 (합 1.00)
+        col_widths = [0.11, 0.23, 0.12, 0.11, 0.11, 0.11, 0.11, 0.10]
         table = ax.table(cellText=table_data, colLabels=None, colWidths=col_widths, loc='center', cellLoc='center', bbox=table_bbox)
         table.auto_set_font_size(False)
-        table.set_fontsize(12)
+        table.set_fontsize(11)
         table.scale(1.0, 1.0)
 
         # 표 스타일 개선 및 생성날짜 행 통합, border 제거
-        # 카테고리별 배경색 정의
-        # 중복 없는 6가지 계열 색상 (파랑, 초록, 노랑, 주황, 분홍, 보라)
         category_colors = [
             "#e3f0ff",  # 연파랑
             "#e6f7e6",  # 연초록
@@ -216,7 +218,6 @@ if __name__ == "__main__":
             cat_indices.append(cat_idx)
 
         for (row, col), cell in table.get_celld().items():
-            # 셀 스타일(정렬, weight, 병합 등) 기존대로 적용
             if row == 0:
                 cell.set_edgecolor('none')
                 cell.set_facecolor('#fff')
@@ -228,7 +229,7 @@ if __name__ == "__main__":
                     cell.get_text().set_text("")
             elif row == 1:
                 cell.set_facecolor('#444444')
-                cell.set_fontsize(12)
+                cell.set_fontsize(11)
                 cell.set_text_props(weight='black', color='#fff', ha='center')
                 cell.set_edgecolor('#ddd')
                 cell.set_height(0.09)
@@ -236,33 +237,49 @@ if __name__ == "__main__":
                 cat_idx = cat_indices[row-2] if (row-2) < len(cat_indices) else 0
                 cell.set_facecolor(category_colors[cat_idx % len(category_colors)])
                 cell.set_height(0.09)
-                cell.set_fontsize(12)
+                cell.set_fontsize(11)
                 if col in [0, 1]:
                     cell.set_text_props(weight='bold')
                 if col == 1:
-                    cell.set_fontsize(11)
+                    cell.set_fontsize(10.5)
 
-            # 텍스트 색상 조건부 적용 (스타일과 분리)
+            # 텍스트 색상 조건부 적용
             if row >= 2 and colnames is not None and col < len(colnames):
                 colname = colnames[col]
                 val = cell.get_text().get_text().replace('%','').replace(',','')
-                # '구분', '상품명' 칼럼이 아니면 우측정렬
                 if colname not in ['구분', '상품명']:
                     cell.set_text_props(ha='right')
-                # 20일MDD 파랑색
+                
+                # 20일MDD
                 if colname == '20일MDD':
                     try:
                         if float(val) <= -5:
                             cell.get_text().set_color('red')
                     except:
                         pass
-                # 현재가 < 20일평균 파랑색
+                # 현재가 < 20일평균 파랑색/빨강색
                 if colname == '20일평균':
                     try:
                         price = float(val)
                         nowPrice = table[(row, colnames.index('현재가'))].get_text().get_text().replace(',','')
                         if float(price) > float(nowPrice):
                             cell.get_text().set_color('red')
+                    except:
+                        pass
+                # 평균MDD 조건부 강조
+                if colname == '평균MDD':
+                    try:
+                        avg_mdd_str = cell.get_text().get_text()
+                        if avg_mdd_str != '-':
+                            avg_val = float(avg_mdd_str.replace('%', ''))
+                            cur_mdd_str = table[(row, colnames.index('현재MDD'))].get_text().get_text()
+                            cur_val = float(cur_mdd_str.replace('%', ''))
+                            if cur_val < avg_val:
+                                cell.set_text_props(color='#d32f2f', weight='heavy', ha='right')
+                            else:
+                                cell.set_text_props(color='#222', weight='bold', ha='right')
+                        else:
+                            cell.set_text_props(color='#888', ha='center')
                     except:
                         pass
                 if colname == '연초대비':
