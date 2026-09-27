@@ -23,7 +23,7 @@ def capture_market_map(output_path='market_map.png'):
         # 현실적인 User-Agent와 설정 적용
         context = browser.new_context(
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-            viewport={'width': 1280, 'height': 800}
+            viewport={'width': 1080, 'height': 1080}
         )
         page = context.new_page()
         
@@ -109,26 +109,23 @@ def capture_market_map(output_path='market_map.png'):
             # 제목 및 날짜 (어두운 배경에 맞춰 흰색 계열로)
             now_str = datetime.now().strftime('%Y-%m-%d %H:%M')
             ax.text(50, 96, 'S&P 500 Market Heatmap', ha='center', va='center', 
-                    fontsize=26, fontweight='black', color='#FFFFFF')
-            ax.text(96, 96, f'조회 기준: {now_str}', ha='right', va='center', 
-                    fontsize=10, fontweight='bold', color='#AAAAAA')
+                    fontsize=32, fontweight='black', color='#FFFFFF')
+            ax.text(50, 92, f'조회 기준: {now_str}', ha='center', va='center', 
+                    fontsize=14, fontweight='bold', color='#AAAAAA')
             
             # 맵 이미지 불러오기 및 중앙 배치
             img = mpimg.imread(temp_path)
-            img_h, img_w, _ = img.shape
-            aspect = img_h / img_w
-            
-            # 가로를 거의 100% 가깝게 채움 (여백 최소화)
+            # 사용자가 원하는 적절한 크기로 강제 조정 (너무 꽉 차지 않고, 기존보다 커진 52% 세로 비율)
             target_w = 98
-            target_h = target_w * aspect
+            target_h = 52
             
-            # 중앙 배치 (Y축 여백 최소화)
-            y_start = (92 - target_h) / 2 + 2
+            x_start = (100 - target_w) / 2
+            y_start = (88 - target_h) / 2
             
-            ax.imshow(img, extent=[1, 99, y_start, y_start + target_h], aspect='auto', zorder=2)
+            ax.imshow(img, extent=[x_start, x_start + target_w, y_start, y_start + target_h], aspect='auto', zorder=2)
             
-            # 테두리 제거 또는 아주 얇게
-            plt.savefig(output_path, bbox_inches='tight', pad_inches=0, facecolor=fig.get_facecolor())
+            # 인스타그램 규격 1:1 유지를 위해 bbox_inches='tight' 제거
+            plt.savefig(output_path, pad_inches=0, facecolor=fig.get_facecolor())
             plt.close()
             
             if os.path.exists(temp_path):

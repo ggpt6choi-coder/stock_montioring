@@ -48,16 +48,16 @@ category_map = [
         ("SPLG", "SPLG"), ("SPY", "SPY"), ("SSO", "SSO"), ("UPRO", "UPRO"), ("453330.KS", "RISE S&P500")
     ]),
     ("NASDAQ", [
-        ("QQQM", "QQQM"), ("QQQ", "QQQ"), ("QLD", "QLD"), ("TQQQ", "TQQQ"), ("368590.KS", "RESE미국나스닥100")
+        ("QQQM", "QQQM"), ("QQQ", "QQQ"), ("QLD", "QLD"), ("TQQQ", "TQQQ"), ("368590.KS", "RISE 미국나스닥100")
     ]),
     ("배당성장", [
-        ("SCHD", "SCHD"), ("458730.KS", "TIGER미국배우당다우존스")
+        ("SCHD", "SCHD"), ("458730.KS", "TIGER 미국배당다우")
     ]),
     ("중기채", [
-        ("IEF", "IEF"), ("UST", "UST"), ("TYD", "TYD"), ("305080.KS", "TIGER미국국채10년")
+        ("IEF", "IEF"), ("UST", "UST"), ("TYD", "TYD"), ("305080.KS", "TIGER 미국국채10년")
     ]),
     ("장기채", [
-        ("TLT", "TLT"), ("UBT", "UBT"), ("TMF", "TMF"), ("481340.KS", "RISE 미국30년국채액티브")
+        ("TLT", "TLT"), ("UBT", "UBT"), ("TMF", "TMF"), ("481340.KS", "RISE 미국30년국채")
     ]),
     ("금", [
         ("GLDM", "GLDM"), ("0072R0.KS", "TIGER KRX금현물")
@@ -75,17 +75,17 @@ ticker_name_map = {
     "QQQ": "QQQ",
     "QLD": "QLD",
     "TQQQ": "TQQQ",
-    "368590.KS": "RESE미국나스닥100",
+    "368590.KS": "RISE 미국나스닥100",
     "SCHD": "SCHD",
-    "458730.KS": "TIGER미국배우당다우존스",
+    "458730.KS": "TIGER 미국배당다우",
     "IEF": "IEF",
     "UST": "UST",
     "TYD": "TYD",
-    "305080.KS": "TIGER미국국채10년",
+    "305080.KS": "TIGER 미국국채10년",
     "TLT": "TLT",
     "UBT": "UBT",
     "TMF": "TMF",
-    "481340.KS": "RISE 미국30년국채액티브",
+    "481340.KS": "RISE 미국30년국채",
     "GLDM": "GLDM",
     "0072R0.KS": "TIGER KRX금현물",
 }
@@ -185,9 +185,11 @@ if __name__ == "__main__":
 
         nrows, ncols = len(table_data), len(colnames)
         table_bbox = [0.01, 0.01, 0.99, 0.99]
-        table = ax.table(cellText=table_data, colLabels=None, loc='center', cellLoc='center', bbox=table_bbox)
+        # 컬럼 너비를 비율로 정확하게 분배하여 텍스트 침범 방지 (합 1.0)
+        col_widths = [0.12, 0.26, 0.13, 0.13, 0.12, 0.12, 0.12]
+        table = ax.table(cellText=table_data, colLabels=None, colWidths=col_widths, loc='center', cellLoc='center', bbox=table_bbox)
         table.auto_set_font_size(False)
-        table.set_fontsize(11)
+        table.set_fontsize(12)
         table.scale(1.0, 1.0)
 
         # 표 스타일 개선 및 생성날짜 행 통합, border 제거
@@ -226,19 +228,19 @@ if __name__ == "__main__":
                     cell.get_text().set_text("")
             elif row == 1:
                 cell.set_facecolor('#444444')
-                cell.set_fontsize(10)
+                cell.set_fontsize(12)
                 cell.set_text_props(weight='black', color='#fff', ha='center')
                 cell.set_edgecolor('#ddd')
                 cell.set_height(0.09)
-                if col == 1:
-                    cell.set_width(0.32)
             elif row >= 2:
                 cat_idx = cat_indices[row-2] if (row-2) < len(cat_indices) else 0
                 cell.set_facecolor(category_colors[cat_idx % len(category_colors)])
                 cell.set_height(0.09)
-                cell.set_fontsize(11)
+                cell.set_fontsize(12)
+                if col in [0, 1]:
+                    cell.set_text_props(weight='bold')
                 if col == 1:
-                    cell.set_width(0.32)
+                    cell.set_fontsize(11)
 
             # 텍스트 색상 조건부 적용 (스타일과 분리)
             if row >= 2 and colnames is not None and col < len(colnames):
@@ -307,7 +309,8 @@ if __name__ == "__main__":
             else:
                 prev_cat = cat
 
-        plt.savefig('index_monitoring_instagram.png', bbox_inches='tight', pad_inches=0, dpi=100)
+        # 인스타그램 규격 1:1 유지를 위해 bbox_inches='tight' 제거
+        plt.savefig('index_monitoring_instagram.png', pad_inches=0, dpi=100, facecolor=fig.get_facecolor())
         print('인스타그램용 이미지가 index_monitoring_instagram.png로 저장되었습니다.')
 
     
