@@ -32,12 +32,12 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
 # OpenRouter 설정
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
-# 무료 모델 우선순위 (순서대로 fallback)
+# 모델 우선순위: 한국어 퀀트 추론력이 뛰어난 모델 순서로 fallback
 OPENROUTER_MODELS = [
-    "qwen/qwen3.8-27b:free",                  # 한국어 강점, 무료
-    "nvidia/nemotron-3-ultra-550b-a55b:free",  # 대형 무료 모델
-    "google/gemma-4-31b-it:free",              # Google 무료
-    "openai/gpt-4o",                           # 유료 최종 fallback
+    "openai/gpt-4o-mini",                     # 1순위: 초저비용($0.0001), 최상의 한국어 퀀트 인사이트 & 속도
+    "openai/gpt-4o",                          # 2순위: 최고 성능 유료 모델
+    "google/gemma-4-31b-it:free",             # 3순위: Google 무료 모델
+    "qwen/qwen3.8-27b:free",                  # 4순위: Qwen 무료 모델
 ]
 
 # 11개 섹터 ETF (티커: 한글 섹터명)
@@ -172,7 +172,7 @@ def is_market_holiday(last_date: date) -> bool:
 # ─────────────────────────────────────────────
 
 def build_ai_prompt(stats: list[dict], ref_date: date) -> str:
-    """AI에게 전달할 섹터 데이터 프롬프트 구성."""
+    """월가 퀀트 애널리스트 수준의 고품질 시황 해석을 위한 프롬프트 구성."""
     date_str = ref_date.strftime("%Y-%m-%d")
 
     lines = [f"기준일: {date_str}", ""]
@@ -180,43 +180,32 @@ def build_ai_prompt(stats: list[dict], ref_date: date) -> str:
     for s in stats:
         lines.append(
             f"  {s['ticker']}({s['sector']}): "
-            f"20일이격률={s['gap20']:+.1f}%, "
-            f"50일이격률={s['gap50']:+.1f}%, "
-            f"200일이격률={s['gap200']:+.1f}%, "
+            f"20일={s['gap20']:+.1f}%, "
+            f"50일={s['gap50']:+.1f}%, "
+            f"200일={s['gap200']:+.1f}%, "
             f"배열={s['alignment']}"
         )
 
     above_200 = sum(1 for s in stats if s["gap200"] >= 0)
     sorted_gap20 = sorted(stats, key=lambda x: x["gap20"], reverse=True)
     lines.append(f"\n200일선 상회 섹터: {above_200} / {len(stats)}개")
-    lines.append(f"20일선 이격률 1위: {sorted_gap20[0]['ticker']}({sorted_gap20[0]['sector']}) {sorted_gap20[0]['gap20']:+.1f}%")
-    lines.append(f"20일선 이격률 최하: {sorted_gap20[-1]['ticker']}({sorted_gap20[-1]['sector']}) {sorted_gap20[-1]['gap20']:+.1f}%")
+    lines.append(f"20일선 강세 1위: {sorted_gap20[0]['ticker']}({sorted_gap20[0]['sector']}) {sorted_gap20[0]['gap20']:+.1f}%")
+    lines.append(f"20일선 약세 1위: {sorted_gap20[-1]['ticker']}({sorted_gap20[-1]['sector']}) {sorted_gap20[-1]['gap20']:+.1f}%")
 
     data_summary = "\n".join(lines)
 
     return (
-        f"[언어 규칙] 반드시 한국어로만 답변하세요. English is strictly prohibited.\n\n"
-        f"당신은 미국 주식 섹터 로테이션 전문 애널리스트입니다.\n"
-        f"아래 S&P 500 11개 섹터 ETF의 이동평균선 데이터를 분석하여\n"
-        f"오늘의 시장 흐름을 아래 형식으로 정확히 4~5개 불릿 포인트로 작성해주세요.\n\n"
-        f"[출력 형식 규칙 — 반드시 준수]\n"
-        f"• 각 항목은 '• '으로 시작하는 한 줄\n"
-        f"• 각 줄은 30자 이내로 간결하게\n"
-        f"• 숫자/티커를 반드시 포함해 구체적으로\n"
-        f"• 문단/이어지는 문장 금지 — 오직 불릿 라인만\n"
-        f"• 투자 권유·매수·매도 추천 절대 금지\n\n"
-        f"[분석 포인트]\n"
-        f"• 자금이 몰리는 섹터 vs 이탈하는 섹터\n"
-        f"• Risk-on / Risk-off 판단 (방어 vs 성장 섹터 흐름)\n"
-        f"• 정배열/역배열 섹터 현황\n"
-        f"• 200일선 기준 대세 추세\n"
-        f"• 주목할 이상 신호 (있을 경우)\n\n"
-        f"[예시 출력]\n"
-        f"• XLK(기술) 20일선 +4.3%, 정배열 — 단기 강세 주도\n"
-        f"• XLU(유틸리티) 역배열, 방어주 이탈 — Risk-on 흐름\n"
-        f"• 200일선 상회 4/11개 — 대세 하락 압력 우세\n"
-        f"• XLE 200일선 +11.9%에도 20일선 -2.6% — 단기 조정\n"
-        f"• 정배열 섹터 XLK·XLV 외 대부분 혼조\n\n"
+        f"당신은 월스트리트 헤지펀드의 수석 매크로 퀀트 전략가입니다.\n"
+        f"제공된 S&P 500 11개 섹터의 이평선 데이터를 종합적으로 분석하여,\n"
+        f"투자자가 오늘 시장의 '진짜 판세와 자금 흐름'을 즉시 꿰뚫어 볼 수 있는 수준 높은 시황 인사이트를 작성하세요.\n\n"
+        f"[절대 금지 사항 - 위반 시 무효]\n"
+        f"❌ 이미 위의 표에 나온 수치(+4.3%, 20일선 등)를 단순 나열하거나 읊어주는 행위 절대 금지!\n"
+        f"❌ 종목별 단순 상태 나열('XLK는 상승세이고 XLU는 하락세이다') 금지!\n"
+        f"❌ 영어 단어, 한자 사용 금지. 반드시 100% 품격 있는 한국어로만 작성.\n\n"
+        f"[작성 지침 - 아래 3가지 핵심 관점으로 불릿 포인트(•) 3~4줄 작성]\n"
+        f"1. [시장 체력 및 판세]: 200일선 상회 비율과 전체 배열을 근거로, 지수 착시 대비 실제 시장 하부 체력(Market Breadth)이 건강한지 진단\n"
+        f"2. [자금 흐름 & 섹터 로테이션]: 성장주(기술 등) vs 방어주(유틸리티, 필수소비 등) vs 경기민감주 흐름을 비교하여, 현재 스마트머니가 위험 선호(Risk-on)인지 회피(Risk-off)인지, 주도주 쏠림인지 순환매인지 해석\n"
+        f"3. [변곡점 및 투자 시사점]: 현 장세에서 투자자가 주의해야 할 핵심 리스크 요인 또는 기회\n\n"
         f"[데이터]\n{data_summary}"
     )
 
@@ -371,23 +360,30 @@ def clean_ai_comment(raw_text: Optional[str], stats: list) -> str:
         if len(valid_bullets) >= 2:
             return "\n".join(valid_bullets[:4])
 
-    # ── Fallback: 룰베이스 퀀트 자동 요약 ──
+    # ── Fallback: 룰베이스 퀀트 거시 분석 ──
     above_200 = sum(1 for s in stats if s["gap200"] >= 0)
     sorted_by_gap20 = sorted(stats, key=lambda x: x["gap20"], reverse=True)
-    bullish = [s['ticker'] for s in stats if s['alignment'] == '정배열']
-    bearish = [s['ticker'] for s in stats if s['alignment'] == '역배열']
+    bullish = [f"{s['ticker']}({s['sector']})" for s in stats if s['alignment'] == '정배열']
+    bearish = [f"{s['ticker']}({s['sector']})" for s in stats if s['alignment'] == '역배열']
+
+    breadth_desc = "시장 내부 체력(Market Breadth)이 견고한 대세 확장 국면입니다." if above_200 >= 8 else (
+        "200일선 상회 섹터가 과반 미만으로, 지수 견인력 대비 시장 하부 지지력이 취약한 차별화 장세입니다." if above_200 < 6 else
+        "중장기 방향성을 모색하는 중립적 혼조 국면입니다."
+    )
+
+    lead_sector = f"{sorted_by_gap20[0]['ticker']}({sorted_by_gap20[0]['sector']})"
+    lag_sector = f"{sorted_by_gap20[-1]['ticker']}({sorted_by_gap20[-1]['sector']})"
 
     bullets = [
-        f"• 200일선 상회 {above_200}/11개 — {'대세 상승 국면 유지' if above_200 >= 8 else '단기 하락 및 조정 압력 우세'}",
-        f"• 단기 주도 섹터: {sorted_by_gap20[0]['ticker']}({sorted_by_gap20[0]['sector']}) {sorted_by_gap20[0]['gap20']:+.1f}% 강세",
-        f"• 단기 조정 섹터: {sorted_by_gap20[-1]['ticker']}({sorted_by_gap20[-1]['sector']}) {sorted_by_gap20[-1]['gap20']:+.1f}% 약세",
+        f"• [시장 체력 진단]: 200일선 상회 {above_200}/11개. {breadth_desc}",
+        f"• [자금 로테이션]: {lead_sector} 중심의 모멘텀 쏠림이 뚜렷한 반면, {lag_sector}의 상대적 부진으로 섹터 간 양극화가 나타나고 있습니다.",
     ]
     if bullish:
-        bullets.append(f"• 정배열 추세 섹터: {', '.join(bullish)}")
-    elif bearish:
-        bullets.append(f"• 역배열 경계 섹터: {', '.join(bearish)}")
+        bullets.append(f"• [주도 추세 섹터]: {', '.join(bullish)}가 정배열 추세를 유지하며 시장 탄력을 주도하고 있습니다.")
+    if bearish:
+        bullets.append(f"• [투자 유의 섹터]: {', '.join(bearish)}가 중단기 역배열 상태로 하방 리스크에 대한 주의가 필요합니다.")
 
-    return "\n".join(bullets)
+    return "\n".join(bullets[:4])
 
 
 def build_message(stats: list, ref_date: date, ai_comment: Optional[str] = None) -> str:
