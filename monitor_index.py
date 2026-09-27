@@ -127,16 +127,11 @@ def fetch_stock_info(ticker, avg_mdd=None):
     max_price = hist['Close'].max()
     mdd = ((price - max_price) / max_price) * 100
 
-    # 20일 MDD 계산
-    max_20 = hist['Close'][-20:].max() if len(hist) >= 20 else hist['Close'].max()
-    mdd_20 = ((price - max_20) / max_20) * 100
-
     display_ticker = ticker_name_map.get(ticker, ticker)
     return {
         '티커': display_ticker,
         '현재가': f"{price:,.1f}",
         '20일평균': f"{avg_20:.1f}",
-        '20일MDD': f"{mdd_20:.1f}%",
         '현재MDD': f"{mdd:.1f}%",
         '평균MDD': f"{avg_mdd:.1f}%" if avg_mdd is not None else '-',
         '연초대비': f"{ytd_change:.1f}%" if year_start_price else 'N/A',
@@ -189,11 +184,11 @@ if __name__ == "__main__":
 
         nrows, ncols = len(table_data), len(colnames)
         table_bbox = [0.01, 0.01, 0.99, 0.99]
-        # 8개 컬럼 너비 분배 (합 1.00)
-        col_widths = [0.11, 0.23, 0.12, 0.11, 0.11, 0.11, 0.11, 0.10]
+        # 7개 컬럼 너비 분배 (합 1.00)
+        col_widths = [0.12, 0.25, 0.13, 0.125, 0.125, 0.125, 0.125]
         table = ax.table(cellText=table_data, colLabels=None, colWidths=col_widths, loc='center', cellLoc='center', bbox=table_bbox)
         table.auto_set_font_size(False)
-        table.set_fontsize(11)
+        table.set_fontsize(12)
         table.scale(1.0, 1.0)
 
         # 표 스타일 개선 및 생성날짜 행 통합, border 제거
@@ -229,7 +224,7 @@ if __name__ == "__main__":
                     cell.get_text().set_text("")
             elif row == 1:
                 cell.set_facecolor('#444444')
-                cell.set_fontsize(11)
+                cell.set_fontsize(12)
                 cell.set_text_props(weight='black', color='#fff', ha='center')
                 cell.set_edgecolor('#ddd')
                 cell.set_height(0.09)
@@ -237,11 +232,11 @@ if __name__ == "__main__":
                 cat_idx = cat_indices[row-2] if (row-2) < len(cat_indices) else 0
                 cell.set_facecolor(category_colors[cat_idx % len(category_colors)])
                 cell.set_height(0.09)
-                cell.set_fontsize(11)
+                cell.set_fontsize(12)
                 if col in [0, 1]:
                     cell.set_text_props(weight='bold')
                 if col == 1:
-                    cell.set_fontsize(10.5)
+                    cell.set_fontsize(11)
 
             # 텍스트 색상 조건부 적용
             if row >= 2 and colnames is not None and col < len(colnames):
@@ -250,23 +245,30 @@ if __name__ == "__main__":
                 if colname not in ['구분', '상품명']:
                     cell.set_text_props(ha='right')
                 
-                # 20일MDD
-                if colname == '20일MDD':
-                    try:
-                        if float(val) <= -5:
-                            cell.get_text().set_color('red')
-                    except:
-                        pass
-                # 현재가 < 20일평균 파랑색/빨강색
+                # 20일평균 (현재가가 20일평균 밑으로 내려가면 붉은색 볼드)
                 if colname == '20일평균':
                     try:
-                        price = float(val)
-                        nowPrice = table[(row, colnames.index('현재가'))].get_text().get_text().replace(',','')
-                        if float(price) > float(nowPrice):
-                            cell.get_text().set_color('red')
+                        avg_val = float(val)
+                        now_price = float(table[(row, colnames.index('현재가'))].get_text().get_text().replace(',',''))
+                        if avg_val > now_price:
+                            cell.set_text_props(color='#d32f2f', weight='heavy', ha='right')
+                        else:
+                            cell.set_text_props(color='#222', ha='right')
                     except:
                         pass
-                # 평균MDD 조건부 강조
+                
+                # 현재MDD
+                if colname == '현재MDD':
+                    try:
+                        cm_val = float(val)
+                        if cm_val <= -25:
+                            cell.set_text_props(color='#d32f2f', weight='heavy', ha='right')
+                        else:
+                            cell.set_text_props(color='#222', ha='right')
+                    except:
+                        pass
+
+                # 평균MDD 조건부 강조 (현재 낙폭이 평균 낙폭보다 더 깊을 때 붉은 볼드)
                 if colname == '평균MDD':
                     try:
                         avg_mdd_str = cell.get_text().get_text()
