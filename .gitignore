@@ -57,3 +57,4 @@ venv
 .DS_Store
 
 result/
+fg_cache.json
