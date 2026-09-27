@@ -2,7 +2,8 @@ name: Run monitor_stock.py every day
 
 on:
   schedule:
-    - cron: '0 21 * * *' # 한국시간 오전 7:00에 해당 (22:00 UTC 전날)
+    # 미국 장마감(겨울 06:00, 여름 05:00 KST) 후 데이터 정산 완료 시점인 KST 06:15 실행 (화~토)
+    - cron: '15 21 * * 1-5' # UTC 21:15 = KST 06:15 (월~금 UTC = 화~토 KST)
   workflow_dispatch:
 
 jobs:
