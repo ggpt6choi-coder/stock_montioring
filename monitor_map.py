@@ -98,7 +98,6 @@ def capture_market_map(output_path='market_map.png'):
             
             # ── 인스타그램 규격(1080x1080)으로 재가공 ────────────────
             fig, ax = plt.subplots(figsize=(10.8, 10.8), dpi=100)
-            # 맵 배경색과 유사한 어두운 색상 적용 (더 꽉 찬 느낌을 줌)
             BG_DARK = '#161C22' 
             fig.patch.set_facecolor(BG_DARK)
             ax.set_facecolor(BG_DARK)
@@ -106,26 +105,20 @@ def capture_market_map(output_path='market_map.png'):
             ax.set_ylim(0, 100)
             ax.axis('off')
             
-            # 제목 및 날짜 (어두운 배경에 맞춰 흰색 계열로)
+            # 상단 제목 및 날짜를 컴팩트하게 배치 (상단 여백 최소화)
             now_str = datetime.now().strftime('%Y-%m-%d %H:%M')
-            ax.text(50, 96, 'S&P 500 Market Heatmap', ha='center', va='center', 
-                    fontsize=32, fontweight='black', color='#FFFFFF')
-            ax.text(50, 92, f'조회 기준: {now_str}', ha='center', va='center', 
-                    fontsize=14, fontweight='bold', color='#AAAAAA')
+            ax.text(5, 96.5, 'S&P 500 Market Heatmap', ha='left', va='center', 
+                    fontsize=26, fontweight='black', color='#FFFFFF')
+            ax.text(95, 96.5, f'조회 기준: {now_str}', ha='right', va='center', 
+                    fontsize=13, fontweight='bold', color='#AAAAAA')
             
-            # 맵 이미지 불러오기 및 중앙 배치
+            # 맵 이미지 불러오기 및 화면 전체에 가득 채우기 (세로 91% 차지)
             img = mpimg.imread(temp_path)
-            # 사용자가 원하는 적절한 크기로 강제 조정 (너무 꽉 차지 않고, 기존보다 커진 52% 세로 비율)
-            target_w = 98
-            target_h = 52
             
-            x_start = (100 - target_w) / 2
-            y_start = (88 - target_h) / 2
+            # 여백 없이 화면에 가득 차도록 extent 설정 (가로 100%, 세로 y=1 ~ 93)
+            ax.imshow(img, extent=[1, 99, 1, 93], aspect='auto', zorder=2)
             
-            ax.imshow(img, extent=[x_start, x_start + target_w, y_start, y_start + target_h], aspect='auto', zorder=2)
-            
-            # 인스타그램 규격 1:1 유지를 위해 bbox_inches='tight' 제거
-            plt.savefig(output_path, pad_inches=0, facecolor=fig.get_facecolor())
+            plt.savefig(output_path, bbox_inches='tight', pad_inches=0.02, facecolor=fig.get_facecolor(), dpi=100)
             plt.close()
             
             if os.path.exists(temp_path):

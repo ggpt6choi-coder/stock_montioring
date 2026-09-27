@@ -309,8 +309,8 @@ if __name__ == "__main__":
             else:
                 prev_cat = cat
 
-        # 인스타그램 규격 1:1 유지를 위해 bbox_inches='tight' 제거
-        plt.savefig('index_monitoring_instagram.png', pad_inches=0, dpi=100, facecolor=fig.get_facecolor())
+        # 표만 이미지 전체에 꽉 차게 출력 (여백 완전 제거)
+        plt.savefig('index_monitoring_instagram.png', bbox_inches='tight', pad_inches=0, dpi=100)
         print('인스타그램용 이미지가 index_monitoring_instagram.png로 저장되었습니다.')
 
     
